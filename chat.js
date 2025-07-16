@@ -86,9 +86,11 @@ const parseChatConfig = (content) => {
   try {
     parsedObject = new Function(`return ${configStr}`)();
 
-    if (!(parsedObject?.people instanceof Object)) {
+    if (!parsedObject.people) {
       throw new Error('"people" must be an Object');
     }
+
+    if (parsedObject.people.length === 0) throw new Error('"people" must not be empty');
   } catch (e) {
     throw new Error(`Parsing failed: ${e.message}`);
   }
@@ -197,51 +199,56 @@ const renderChatContent = (args, content) => {
   // 渲染单条消息
   const renderSingleMessage = (me, dialogueInfo) => {
 
-    return `
-      <div class="chat-message ${me ? "me" : ""}">
-        <img class="chat-avatar no-lightbox" src="${necessaryInfo.totalData.people[dialogueInfo.speaker].avatar}">
-        <div class="chat-message-subtitle">
-          <span class="chat-message-name">${necessaryInfo.totalData.people[dialogueInfo.speaker].name}</span>
-          <div class="chat-message-text-wrapper ${me ? "me" : ""}">
-            <div class="chat-message-text">${(() => {
-              let processedContent = dialogueInfo.content;
+    try {
+      return `
+        <div class="chat-message ${me ? "me" : ""}">
+          <img class="chat-avatar no-lightbox" src="${necessaryInfo.totalData.people[dialogueInfo.speaker].avatar}">
+          <div class="chat-message-subtitle">
+            <span class="chat-message-name">${necessaryInfo.totalData.people[dialogueInfo.speaker].name}</span>
+            <div class="chat-message-text-wrapper ${me ? "me" : ""}">
+              <div class="chat-message-text">${(() => {
+                let processedContent = dialogueInfo.content;
 
-              // 引用回复
-              if (dialogueInfo.replyTo) {
-                processedContent = `<blockquote>回复：<strong class="chat-message-mentioned">@${
-                  necessaryInfo.totalData.people[dialogueInfo.replyTo].name
-                }</strong></blockquote>${processedContent}`;
-              }
+                // 引用回复
+                if (dialogueInfo.replyTo) {
+                  processedContent = `<blockquote>回复：<strong class="chat-message-mentioned">@${
+                    necessaryInfo.totalData.people[dialogueInfo.replyTo].name
+                  }</strong></blockquote>${processedContent}`;
+                }
 
-              // 提及
-              if (dialogueInfo.mentions.length > 0) {
-                // 转义
-                const escapeRegExp = (string) => {
-                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                      };
+                // 提及
+                if (dialogueInfo.mentions.length > 0) {
+                  // 转义
+                  const escapeRegExp = (string) => {
+                  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        };
 
-                // 创建正则表达式
-                const mentionPattern = new RegExp(
-                  `@(${dialogueInfo.mentions.map(escapeRegExp).join('|')})`,
-                  'g'
-                );
+                  // 创建正则表达式
+                  const mentionPattern = new RegExp(
+                    `@(${dialogueInfo.mentions.map(escapeRegExp).join('|')})`,
+                    'g'
+                  );
 
-                // 一波带走
-                processedContent = processedContent.replace(
-                  mentionPattern,
-                  '<strong class="chat-message-mentioned">@$1</strong>'
-                );
-              }
+                  // 一波带走
+                  processedContent = processedContent.replace(
+                    mentionPattern,
+                    '<strong class="chat-message-mentioned">@$1</strong>'
+                  );
+                }
 
-              // 处理换行
-              processedContent = processedContent.replace(/\n/g, '<br>');
+                // 处理换行
+                processedContent = processedContent.replace(/\n/g, '<br>');
 
-              return processedContent
-            })()}</div>
+                return processedContent
+              })()}</div>
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    } catch (error) {
+      if (error.message.includes('avatar')) throw new Error(`${dialogueInfo.speaker} 的头像未定义`);
+      if (error.message.includes('name')) throw new Error(`${dialogueInfo.speaker} 的显示名称未定义`);
+    }
   };
 
   return necessaryInfo.dialogue.map((dialogueInfo) => {
