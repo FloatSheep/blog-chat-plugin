@@ -42,7 +42,6 @@ const parseChatConfig = (content) => {
   if (configStart === -1) {
     content = `
       (ChatConfig) {
-        people: {}
       }
     ${content}`
   }
@@ -86,10 +85,6 @@ const parseChatConfig = (content) => {
   try {
     parsedObject = new Function(`return ${configStr}`)();
 
-    if (!parsedObject.people) {
-      throw new Error('"people" must be an Object');
-    }
-
   } catch (e) {
     throw new Error(`Parsing failed: ${e.message}`);
   }
@@ -124,10 +119,10 @@ const getTotalData = (content) => {
     ...contentChatBoxConfig.people,
   };
 
-  return {
-    people: mergedConfig,
-    content: contentData,
-  };
+return {
+  people: mergedConfig,
+  content: contentData,
+};
 };
 
 /**
