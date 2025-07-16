@@ -282,7 +282,7 @@ const createChatBoxContainer = (args, content) => {
 
     return html
   } catch (err) {
-    hexo.log.error(`chatBox 渲染失败: ${err.message}`)
+    hexo.log.error(`[chatBox] 渲染失败: ${err.message}`)
     return `<div><p>chatBox Error!</p></div>`
   }
 }
