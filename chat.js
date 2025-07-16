@@ -1,6 +1,41 @@
 "use strict";
 
-// 配置解析器
+/**
+ * @typedef {Object} ChatConfig
+ * @property {Object.<string, PersonConfig>} people
+ */
+
+/**
+ * @typedef {Object} PersonConfig
+ * @property {string} name
+ * @property {string} avatar
+ */
+
+/**
+ * @typedef {Object} DialogueBlock
+ * @property {string} speaker
+ * @property {string|null} replyTo
+ * @property {string} content
+ * @property {string[]} mentions
+ */
+
+/**
+ * @typedef {Object} ParsedConfigResult
+ * @property {ChatConfig} parsedObject
+ * @property {string} modifiedContent
+ */
+
+/**
+ * @typedef {Object} TotalData
+ * @property {Object.<string, PersonConfig>} people
+ * @property {string} content
+ */
+
+/**
+ * 解析聊天配置
+ * @param {string} content - 包含配置的内容
+ * @returns {ParsedConfigResult}
+ */
 const parseChatConfig = (content) => {
   // 匹配 (ChatConfig) 标识位置
   const configStart = content.indexOf("(ChatConfig)");
@@ -51,7 +86,7 @@ const parseChatConfig = (content) => {
   try {
     parsedObject = new Function(`return ${configStr}`)();
 
-    if (!parsedObject?.people instanceof Object) {
+    if (!(parsedObject?.people instanceof Object)) {
       throw new Error('"people" must be an Object');
     }
   } catch (e) {
@@ -64,16 +99,23 @@ const parseChatConfig = (content) => {
   };
 };
 
-// 获取人物配置
+/**
+ * 获取合并后的配置和内容
+ * @param {string} content - 原始内容
+ * @returns {TotalData}
+ */
 const getTotalData = (content) => {
   // 从主题中获取人物配置
   const themeChatBoxConfig = hexo.theme.config.chatBox ?? {};
 
+  // 解析配置
+  const parsedChatConfig = parseChatConfig(content);
+
   // 从容器前获取人物配置
-  const contentChatBoxConfig = parseChatConfig(content).parsedObject;
+  const contentChatBoxConfig = parsedChatConfig.parsedObject;
 
   // 从容器中获取内容
-  const contentData = parseChatConfig(content).modifiedContent;
+  const contentData = parsedChatConfig.modifiedContent;
 
   // 合并配置
   const mergedConfig = {
@@ -88,15 +130,15 @@ const getTotalData = (content) => {
 };
 
 /**
- * 解析对话格式的文本
- * @param {string} text - 符合规范的对话文本
- * @returns {Array} 包含所有对话块对象的数组
+ * 解析对话文本
+ * @param {string} text - 对话文本
+ * @returns {DialogueBlock[]}
  */
 const parseDialogue = (text) => {
   // 正则表达式分解器
   const blockRegex =
     /\[(.*?)\]\s*\|\s*(?:\[回复:\s*(.*?)\])?\n([\s\S]*?)\n\|\s*\n?/g;
-  const mentionRegex = /@([\w\u4e00-\u9fa5]+)/g;
+  const mentionRegex = /@(\p{Script=Han}|\p{Letter}+)/gu;
 
   const blocks = [];
   let match;
@@ -125,7 +167,11 @@ const parseDialogue = (text) => {
   return blocks;
 };
 
-// 解析聊天内容
+/**
+ * 解析完整聊天内容
+ * @param {string} content - 原始内容
+ * @returns {{totalData: TotalData, dialogue: DialogueBlock[]}}
+ */
 const parseChatContent = (content) => {
   // 获取数据
   const totalData = getTotalData(content);
@@ -138,8 +184,14 @@ const parseChatContent = (content) => {
   };
 };
 
-// 渲染聊天内容
+/**
+ * 渲染聊天内容
+ * @param {string[]} args - 标签参数
+ * @param {string} content - 原始内容
+ * @returns {string}
+ */
 const renderChatContent = (args, content) => {
+  // 获取数据
   const necessaryInfo = parseChatContent(content);
 
   // 渲染单条消息
@@ -152,16 +204,39 @@ const renderChatContent = (args, content) => {
           <span class="chat-message-name">${necessaryInfo.totalData.people[dialogueInfo.speaker].name}</span>
           <div class="chat-message-text-wrapper ${me ? "me" : ""}">
             <div class="chat-message-text">${(() => {
+              let processedContent = dialogueInfo.content;
+
+              // 引用回复
               if (dialogueInfo.replyTo) {
-                dialogueInfo.content = `<blockquote>回复：<strong class="chat-message-mentioned">@${necessaryInfo.totalData.people[dialogueInfo.replyTo].name}</strong></blockquote>${dialogueInfo.content}`
+                processedContent = `<blockquote>回复：<strong class="chat-message-mentioned">@${
+                  necessaryInfo.totalData.people[dialogueInfo.replyTo].name
+                }</strong></blockquote>${processedContent}`;
               }
-              dialogueInfo.mentions.forEach(mentioned => {
-                dialogueInfo.content = dialogueInfo.content.replaceAll(`@${mentioned}`, `<strong class="chat-message-mentioned">@${mentioned}</strong>`);
-              });
 
-              dialogueInfo.content = dialogueInfo.content.replace(/\n/g, '<br>');
+              // 提及
+              if (dialogueInfo.mentions.length > 0) {
+                // 转义
+                const escapeRegExp = (string) => {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                      };
 
-              return dialogueInfo.content
+                // 创建正则表达式
+                const mentionPattern = new RegExp(
+                  `@(${dialogueInfo.mentions.map(escapeRegExp).join('|')})`,
+                  'g'
+                );
+
+                // 一波带走
+                processedContent = processedContent.replace(
+                  mentionPattern,
+                  '<strong class="chat-message-mentioned">@$1</strong>'
+                );
+              }
+
+              // 处理换行
+              processedContent = processedContent.replace(/\n/g, '<br>');
+
+              return processedContent
             })()}</div>
           </div>
         </div>
@@ -175,23 +250,42 @@ const renderChatContent = (args, content) => {
   }).join("");
 };
 
-// 创建聊天容器
+/**
+ * 创建聊天框容器
+ * @param {string[]} args - 标签参数
+ * @param {string} content - 原始内容
+ * @returns {string}
+ */
 const createChatBoxContainer = (args, content) => {
-  return `
-    <div class="chat-box">
-      <div class="chat-title">
-        <i class="fa-solid fa-angle-left"></i>
-        <span class="chat-title-text">${args[0] ?? "群聊消息"}</span>
-        <div class="chat-box-icons">
-          <i class="fa-solid fa-user"></i><i class="fa-solid fa-bars"></i>
+  const elapsedMs = process.hrtime();
+
+  try {
+    const html = `
+      <div class="chat-box">
+        <div class="chat-title">
+          <i class="fa-solid fa-angle-left"></i>
+          <span class="chat-title-text">${args[0] ?? "群聊消息"}</span>
+          <div class="chat-box-icons">
+            <i class="fa-solid fa-user"></i><i class="fa-solid fa-bars"></i>
+          </div>
+        </div>
+        <div class="chat-content">
+          ${renderChatContent(args, content)}
         </div>
       </div>
-      <div class="chat-content">
-        ${renderChatContent(args, content)}
-      </div>
-    </div>
-  `;
-};
+    `;
+
+    hexo.log.info(`[chatBox] 渲染完成，耗时: ${(() => {
+      const hrtime = process.hrtime(elapsedMs);
+      return hrtime[0] * 1000 + hrtime[1] / 1000000
+    })()} 毫秒`);
+
+    return html
+  } catch (err) {
+    hexo.log.error(`chatBox 渲染失败: ${err.message}`)
+    return `<div><p>chatBox Error!</p></div>`
+  }
+}
 
 // {% chatBox "Group Name" "Your Matcher" %}
 hexo.extend.tag.register("chatBox", createChatBoxContainer, { ends: true });
