@@ -199,7 +199,7 @@ const renderChatContent = (args, content) => {
 
     return `
       <div class="chat-message ${me ? "me" : ""}">
-        <img class="chat-avatar" src="${necessaryInfo.totalData.people[dialogueInfo.speaker].avatar}">
+        <img class="chat-avatar no-lightbox" src="${necessaryInfo.totalData.people[dialogueInfo.speaker].avatar}">
         <div class="chat-message-subtitle">
           <span class="chat-message-name">${necessaryInfo.totalData.people[dialogueInfo.speaker].name}</span>
           <div class="chat-message-text-wrapper ${me ? "me" : ""}">
