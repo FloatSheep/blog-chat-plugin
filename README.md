@@ -209,6 +209,8 @@ chatBox:
 {% endchatBox %}
 ```
 
+对话内容中可以出现 `|`，只要不出现单行 `|` 即可
+
 [1]: <https://blog.quenan.cn/posts/829283e6>
 
 [2]: <https://gist.liushen.fun/LiuShen/Hexo-butterfly-tag-chat>
