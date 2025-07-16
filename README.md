@@ -27,6 +27,12 @@
 
 ## 使用
 
+### 添加外挂标签
+
+将 `chat.js` 放入 `/themes/butterfly/scripts/tag/` 下
+
+将 `chat.styl` 放入 `/themes/butterfly/source/css/_tags` 下
+
 ### 添加人物
 
 你可以在每段对话中添加人物，也可以在主题配置中添加人物
