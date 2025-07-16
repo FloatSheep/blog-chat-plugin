@@ -90,8 +90,6 @@ const parseChatConfig = (content) => {
       throw new Error('"people" must be an Object');
     }
 
-    const peopleKeys = Object.keys(parsedObject.people);
-    if (peopleKeys.length === 0) throw new Error('"people" must not be empty');
   } catch (e) {
     throw new Error(`Parsing failed: ${e.message}`);
   }
