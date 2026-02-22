@@ -162,6 +162,7 @@ chatBox:
 - 防风斗篷
 - 星象罗盘
 |
+{% endchatBox %}
 ```
 
 #### 艾特
@@ -172,6 +173,7 @@ chatBox:
 
 
 ```markdown
+{% chatBox 相侵相爱异家人 FloatSheep %}
 [FloatSheep] |
 请问去星辰瀑布的最佳路线？
 需要准备什么装备？
@@ -196,6 +198,7 @@ chatBox:
 
 3. 天气预报显示明日有阵雨
 |
+{% endchatBox %}
 ```
 
 #### 其余
